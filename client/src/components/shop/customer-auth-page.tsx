@@ -13,10 +13,12 @@ export function CustomerAuthPage({
   mode,
   onAdminAuthenticated,
   onCustomerAuthenticated,
+  returnTo = "/",
 }: {
   mode: "login" | "register";
   onAdminAuthenticated?: (admin: AdminUser) => void;
   onCustomerAuthenticated?: () => void;
+  returnTo?: "/" | "/support";
 }) {
   const isRegistration = mode === "register";
   const navigate = useNavigate();
@@ -33,8 +35,13 @@ export function CustomerAuthPage({
     setSubmitting(true);
     setError("");
     try {
-      if (isRegistration) await register({ name, email, password });
-      else {
+      if (isRegistration) {
+        await register({ name, email, password });
+        if (returnTo !== "/") {
+          await navigate({ to: returnTo });
+          return;
+        }
+      } else {
         const result = await apiRequest<
           | { role: "admin"; token: string; admin: AdminUser }
           | { token: string; admin: AdminUser }
@@ -60,6 +67,10 @@ export function CustomerAuthPage({
         setCustomerSession(result.token, result.user);
         if (onCustomerAuthenticated) {
           onCustomerAuthenticated();
+          return;
+        }
+        if (returnTo !== "/") {
+          await navigate({ to: returnTo });
           return;
         }
       }
@@ -174,6 +185,7 @@ export function CustomerAuthPage({
             {isRegistration ? "Already have an account? " : "New to NovaShop? "}
             <Link
               to={isRegistration ? "/login" : "/register"}
+              search={{ returnTo }}
               className="font-semibold text-primary hover:underline"
             >
               {isRegistration ? "Sign in" : "Create an account"}

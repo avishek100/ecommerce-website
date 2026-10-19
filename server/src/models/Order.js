@@ -1,16 +1,24 @@
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
 
 const orderSchema = new mongoose.Schema(
   {
-    customerAccount: { type: mongoose.Schema.Types.ObjectId, ref: 'Customer' },
+    customerAccount: { type: mongoose.Schema.Types.ObjectId, ref: "Customer" },
     customer: {
       name: { type: String, required: true, trim: true },
       email: { type: String, required: true, lowercase: true, trim: true },
+      phone: { type: String, required: true, trim: true },
       address: { type: String, required: true, trim: true },
+      city: { type: String, required: true, trim: true },
+      province: { type: String, required: true, trim: true },
+      postalCode: { type: String, trim: true, default: "" },
     },
     items: [
       {
-        product: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
+        product: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "Product",
+          required: true,
+        },
         name: { type: String, required: true },
         img: { type: String, required: true },
         price: { type: Number, required: true, min: 0 },
@@ -20,11 +28,11 @@ const orderSchema = new mongoose.Schema(
     total: { type: Number, required: true, min: 0 },
     status: {
       type: String,
-      enum: ['Processing', 'Shipped', 'Delivered', 'Cancelled'],
-      default: 'Processing',
+      enum: ["Processing", "Shipped", "Delivered", "Cancelled"],
+      default: "Processing",
     },
   },
   { timestamps: true },
 );
 
-export const Order = mongoose.model('Order', orderSchema);
+export const Order = mongoose.model("Order", orderSchema);

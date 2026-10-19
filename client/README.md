@@ -40,3 +40,7 @@ npm run dev
 The storefront uses `http://localhost:4000/api` by default. Set `VITE_API_URL` in `client/.env` to change it. Customers and administrators use the same sign-in form at `/login`; the server recognizes the account from the submitted email and password. Admin credentials open the separate admin console and sidebar. The `/admin` route opens the same sign-in form.
 
 Customer registration is available at `/register` (customer accounts only). Customers can review orders placed while signed in at `/my-orders`; guest checkout remains available.
+
+The admin console has separate pages at `/admin/recent-orders`, `/admin/products`, `/admin/inventory`, and `/admin/orders`. Product photos can be selected from a local device as JPEG, PNG, or WebP files up to 5 MB. Checkout collects a phone number and Nepal delivery address (street, city, province, and optional postal code).
+
+Customers can chat with store support at `/support` after registering or signing in. Administrators receive messages and reply in real time from **Customer chat** at `/admin/chat`.

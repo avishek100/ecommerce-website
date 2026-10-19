@@ -21,6 +21,7 @@ import {
   Search,
   ShoppingCart,
   ShieldCheck,
+  MessageCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useShop } from "./shop-context";
@@ -33,6 +34,7 @@ const shoppingNav = [
   { icon: ThumbsUp, title: "Best Sellers", to: "/best-sellers" },
   { icon: Gem, title: "Brands", to: "/brands" },
   { icon: BookOpen, title: "Collections", to: "/collections" },
+  { icon: MessageCircle, title: "Chat with Support", to: "/support" },
 ] as const;
 const accountNav = [
   { icon: ClipboardList, title: "My Orders", to: "/my-orders" },
@@ -43,8 +45,9 @@ const accountNav = [
 ] as const;
 export function ShopShell({ children }: { children: ReactNode }) {
   const [menu, setMenu] = useState(false);
-  const { wish, search, setSearch, profile, user, authLoading, logout } =
+  const { cart, wish, search, setSearch, profile, user, authLoading, logout } =
     useShop();
+  const cartCount = cart.reduce((count, item) => count + item.qty, 0);
   useEffect(() => {
     if (!menu) return;
     const previous = document.body.style.overflow;
@@ -216,6 +219,25 @@ export function ShopShell({ children }: { children: ReactNode }) {
                 {wish.length > 0 && (
                   <span className="absolute -right-1 -top-1 rounded-full bg-primary px-1 text-[10px] text-primary-foreground">
                     {wish.length}
+                  </span>
+                )}
+              </Link>
+            </Button>
+            <Button
+              asChild
+              variant="ghost"
+              size="icon"
+              className="relative shrink-0 rounded-full"
+              title="Cart"
+            >
+              <Link
+                to="/cart"
+                aria-label={`View cart${cartCount ? `, ${cartCount} ${cartCount === 1 ? "item" : "items"}` : ""}`}
+              >
+                <ShoppingCart />
+                {cartCount > 0 && (
+                  <span className="absolute -right-1 -top-1 rounded-full bg-primary px-1 text-[10px] text-primary-foreground">
+                    {cartCount}
                   </span>
                 )}
               </Link>

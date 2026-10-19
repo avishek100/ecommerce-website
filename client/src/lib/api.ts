@@ -22,10 +22,14 @@ export async function apiRequest<T>(
   options: RequestInit = {},
   token?: string,
 ): Promise<T> {
+  const isFormData =
+    typeof FormData !== "undefined" && options.body instanceof FormData;
   const response = await fetch(`${apiBaseUrl}${path}`, {
     ...options,
     headers: {
-      ...(options.body ? { "Content-Type": "application/json" } : {}),
+      ...(options.body && !isFormData
+        ? { "Content-Type": "application/json" }
+        : {}),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...options.headers,
     },
@@ -55,5 +59,8 @@ const bundledImages: Record<string, string> = {
 };
 
 export function productImage(source: string) {
+  if (source.startsWith("/uploads/products/")) {
+    return new URL(source, apiBaseUrl).toString();
+  }
   return bundledImages[source] ?? source;
 }

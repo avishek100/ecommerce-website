@@ -361,7 +361,7 @@ export function ShopPageView({ page }: { page: ShopPage }) {
               <ShoppingCart className="h-4 w-4" />
               {cart.reduce((n, p) => n + p.qty, 0)} items in your cart
               <Button asChild variant="link" size="sm">
-                <Link to="/">
+                <Link to="/cart">
                   View cart <ArrowRight />
                 </Link>
               </Button>

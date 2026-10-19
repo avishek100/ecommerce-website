@@ -9,6 +9,10 @@ import { routeTree } from "@/routeTree.gen";
 describe("App routing", () => {
   it.each([
     "admin",
+    "admin/recent-orders",
+    "admin/products",
+    "admin/inventory",
+    "admin/orders",
     "login",
     "register",
     "categories",
@@ -22,12 +26,18 @@ describe("App routing", () => {
     "coupons",
     "addresses",
     "account-settings",
+    "cart",
+    "support",
+    "admin/chat",
   ])("opens the separate %s page", (page) => {
     const router = createRouter({
       routeTree,
       context: { queryClient: new QueryClient() },
     });
-    expect(router.matchRoutes(`/${page}`).at(-1)?.routeId).toBe(`/${page}`);
+    const expectedRouteId = page === "admin" ? "/admin/" : `/${page}`;
+    expect(router.matchRoutes(`/${page}`).at(-1)?.routeId).toBe(
+      expectedRouteId,
+    );
   });
   it("matches a page for / instead of falling back to not found", () => {
     const router = createRouter({
