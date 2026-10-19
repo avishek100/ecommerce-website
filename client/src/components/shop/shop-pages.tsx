@@ -1,0 +1,740 @@
+import { useEffect, useState, type FormEvent } from "react";
+import { Link } from "@tanstack/react-router";
+import {
+  Heart,
+  ShoppingCart,
+  Star,
+  ArrowRight,
+  Package,
+  Ticket,
+  MapPin,
+  Plus,
+  Pencil,
+  Trash2,
+  Check,
+  X,
+  Search,
+  SlidersHorizontal,
+  Shirt,
+  SprayCan,
+  Headphones,
+  Sofa,
+  Footprints,
+  Settings,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { apiRequest, productImage } from "@/lib/api";
+import { useShop, type Address } from "./shop-context";
+import {
+  categories,
+  pageInfo,
+  formatPrice,
+  type Product,
+  type ShopPage,
+} from "./shop-data";
+
+export function ProductCard({ product: p }: { product: Product }) {
+  const { wish, toggleWish, add } = useShop();
+  const [added, setAdded] = useState(false);
+  return (
+    <article className="min-w-0 overflow-hidden rounded-2xl bg-card shadow-soft">
+      <div className="relative">
+        <img
+          src={productImage(p.img)}
+          alt={p.name}
+          className="aspect-square w-full object-cover"
+          loading="lazy"
+        />
+        {p.off && (
+          <span className="absolute left-3 top-3 rounded-md bg-sale px-2 py-1 text-xs font-semibold text-primary-foreground">
+            -{p.off}%
+          </span>
+        )}
+        <Button
+          variant="secondary"
+          size="icon"
+          className="absolute right-3 top-3 rounded-full bg-card"
+          aria-label={`${wish.includes(p.name) ? "Remove" : "Save"} ${p.name} ${wish.includes(p.name) ? "from" : "to"} wishlist`}
+          aria-pressed={wish.includes(p.name)}
+          onClick={() => toggleWish(p.name)}
+        >
+          <Heart
+            className={wish.includes(p.name) ? "fill-sale text-sale" : ""}
+          />
+        </Button>
+      </div>
+      <div className="space-y-2 p-3 sm:p-4">
+        <p className="text-[11px] font-medium uppercase text-muted-foreground">
+          {p.brand}
+        </p>
+        <h2 className="min-h-10 text-sm font-semibold leading-5">{p.name}</h2>
+        <p className="text-xs text-muted-foreground">{p.sub}</p>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="font-bold">{formatPrice(p.price)}</span>
+          <span className="text-xs text-muted-foreground line-through">
+            {p.old && formatPrice(p.old)}
+          </span>
+        </div>
+        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+          <Star className="h-3 w-3 fill-star text-star" />
+          {p.rating} ({p.reviews})
+        </div>
+        <Button
+          className="mt-2 w-full rounded-lg"
+          size="sm"
+          onClick={() => {
+            add(p);
+            setAdded(true);
+            setTimeout(() => setAdded(false), 1500);
+          }}
+        >
+          {added ? <Check /> : <ShoppingCart />}
+          {added ? "Added to cart" : "Add to cart"}
+        </Button>
+      </div>
+    </article>
+  );
+}
+function Empty({
+  icon: Icon,
+  title,
+  action = true,
+}: {
+  icon: typeof Package;
+  title: string;
+  action?: boolean;
+}) {
+  return (
+    <div className="flex min-h-72 flex-col items-center justify-center gap-4 text-center">
+      <div className="grid h-16 w-16 place-items-center rounded-full bg-accent text-primary">
+        <Icon className="h-7 w-7" />
+      </div>
+      <h2 className="text-lg font-semibold">{title}</h2>
+      {action && (
+        <Button asChild>
+          <Link to="/categories">
+            Browse products <ArrowRight />
+          </Link>
+        </Button>
+      )}
+    </div>
+  );
+}
+const categoryIcons = [Shirt, SprayCan, Headphones, Sofa, Footprints];
+export function ShopPageView({ page }: { page: ShopPage }) {
+  const {
+    search,
+    wish,
+    cart,
+    products,
+    productsError,
+    productsLoading,
+    user,
+    authToken,
+    authLoading,
+  } = useShop();
+  const [filter, setFilter] = useState("All");
+  const [sort, setSort] = useState("featured");
+  const [orderFilter, setOrderFilter] = useState("All");
+  const [orders, setOrders] = useState<OrderSummary[]>([]);
+  const [ordersLoading, setOrdersLoading] = useState(false);
+  const [ordersError, setOrdersError] = useState("");
+  const catalog = [
+    "categories",
+    "deals",
+    "new-arrivals",
+    "best-sellers",
+    "brands",
+    "collections",
+    "wishlist",
+  ].includes(page);
+  const [title] = pageInfo[page];
+  useEffect(() => {
+    if (page !== "my-orders" || authLoading || !user || !authToken) return;
+    let cancelled = false;
+    setOrdersLoading(true);
+    apiRequest<{ orders: OrderSummary[] }>("/orders/mine", {}, authToken)
+      .then(({ orders: rows }) => {
+        if (!cancelled) {
+          setOrders(rows);
+          setOrdersError("");
+        }
+      })
+      .catch((error) => {
+        if (!cancelled)
+          setOrdersError(
+            error instanceof Error
+              ? error.message
+              : "Could not load your orders.",
+          );
+      })
+      .finally(() => {
+        if (!cancelled) setOrdersLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [page, authLoading, user, authToken]);
+  let rows = products.filter(
+    (p) =>
+      p.name.toLowerCase().includes(search.toLowerCase()) ||
+      p.sub.toLowerCase().includes(search.toLowerCase()) ||
+      p.brand?.toLowerCase().includes(search.toLowerCase()),
+  );
+  if (page === "new-arrivals") rows = rows.filter((p) => p.isNew);
+  if (page === "deals") rows = rows.filter((p) => p.off);
+  if (page === "wishlist") rows = rows.filter((p) => wish.includes(p.name));
+  if (filter !== "All")
+    rows = rows.filter((p) =>
+      page === "brands"
+        ? p.brand === filter
+        : page === "collections"
+          ? filter === "Everyday Essentials"
+            ? p.brand === "Nova Essentials"
+            : filter === "On the Move"
+              ? p.category === "Sports"
+              : p.category === "Electronics"
+          : p.category === filter,
+    );
+  rows = [...rows].sort((a, b) =>
+    sort === "price-low"
+      ? a.price - b.price
+      : sort === "price-high"
+        ? b.price - a.price
+        : sort === "top-rated" || page === "best-sellers"
+          ? (b.reviews ?? 0) - (a.reviews ?? 0)
+          : 0,
+  );
+  const options =
+    page === "brands"
+      ? ["All", "Nike", "Apple", "Fossil", "Nova Essentials"]
+      : page === "collections"
+        ? ["All", "Everyday Essentials", "On the Move", "Connected Life"]
+        : ["All", ...categories];
+  return (
+    <main className="min-w-0 space-y-6">
+      <div className="flex flex-wrap items-end justify-between gap-3 pt-3">
+        <div>
+          <div className="mb-2 flex items-center gap-2 text-xs text-muted-foreground">
+            <Link to="/">Home</Link>
+            <span>/</span>
+            <span>{title}</span>
+          </div>
+          <h1 className="text-2xl font-bold sm:text-3xl">{title}</h1>
+        </div>
+        {catalog && (
+          <span className="text-sm text-muted-foreground">
+            {rows.length} {rows.length === 1 ? "product" : "products"}
+          </span>
+        )}
+      </div>
+      {productsError && catalog && (
+        <p
+          role="alert"
+          className="rounded-2xl border border-destructive/20 bg-card p-4 text-sm text-destructive"
+        >
+          Products could not be loaded: {productsError}
+        </p>
+      )}
+      {page === "categories" && (
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+          {categories.map((c, i) => {
+            const Icon = categoryIcons[i] ?? Shirt;
+            return (
+              <Button
+                variant="secondary"
+                key={c}
+                onClick={() => setFilter(filter === c ? "All" : c)}
+                aria-pressed={filter === c}
+                className={`h-28 flex-col rounded-2xl bg-card shadow-soft ${filter === c ? "ring-2 ring-primary" : ""}`}
+              >
+                <span className="grid h-11 w-11 place-items-center rounded-full bg-accent text-primary">
+                  <Icon />
+                </span>
+                {c}
+              </Button>
+            );
+          })}
+        </div>
+      )}
+      {page === "collections" && (
+        <div className="grid gap-4 sm:grid-cols-3">
+          {[
+            {
+              title: "Everyday Essentials",
+              img: products[2]?.img,
+              sub: "Simple pieces. Endless possibilities.",
+            },
+            {
+              title: "On the Move",
+              img: products[0]?.img,
+              sub: "Made for your next adventure.",
+            },
+            {
+              title: "Connected Life",
+              img: products[1]?.img,
+              sub: "Everyday tech, elevated.",
+            },
+          ].map((c) => (
+            <div
+              key={c.title}
+              className="overflow-hidden rounded-2xl bg-card shadow-soft"
+            >
+              <img
+                src={productImage(c.img ?? "asset:hero")}
+                alt={c.title}
+                className="aspect-[3/2] w-full object-cover"
+              />
+              <div className="p-4">
+                <h2 className="font-bold">{c.title}</h2>
+                <p className="my-2 text-xs text-muted-foreground">{c.sub}</p>
+                <Button
+                  variant="link"
+                  className="h-auto p-0"
+                  onClick={() => setFilter(c.title)}
+                >
+                  Shop collection <ArrowRight />
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      {catalog && (
+        <>
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b pb-4">
+            <div className="flex max-w-full flex-wrap gap-2">
+              {options.map((o) => (
+                <Button
+                  key={o}
+                  variant={filter === o ? "default" : "outline"}
+                  size="sm"
+                  className="rounded-full"
+                  onClick={() => setFilter(o)}
+                >
+                  {o}
+                </Button>
+              ))}
+            </div>
+            <label className="flex items-center gap-2 text-xs text-muted-foreground">
+              <SlidersHorizontal className="h-4 w-4" />
+              Sort by
+              <select
+                aria-label="Sort products"
+                value={sort}
+                onChange={(e) => setSort(e.target.value)}
+                className="max-w-full rounded-lg border bg-card p-2 text-sm text-foreground"
+              >
+                <option value="featured">Featured</option>
+                <option value="price-low">Price: low to high</option>
+                <option value="price-high">Price: high to low</option>
+                <option value="top-rated">Most popular</option>
+              </select>
+            </label>
+          </div>
+          {rows.length ? (
+            <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
+              {rows.map((p) => (
+                <ProductCard key={p._id ?? p.name} product={p} />
+              ))}
+            </div>
+          ) : productsLoading ? (
+            <p className="py-12 text-center text-sm text-muted-foreground">
+              Loading products…
+            </p>
+          ) : (
+            <Empty
+              icon={page === "wishlist" ? Heart : Search}
+              title={
+                page === "wishlist" && !search && filter === "All"
+                  ? "Your wishlist is empty"
+                  : "No products found"
+              }
+            />
+          )}
+          {cart.length > 0 && (
+            <p
+              aria-live="polite"
+              className="flex items-center gap-2 text-xs text-muted-foreground"
+            >
+              <ShoppingCart className="h-4 w-4" />
+              {cart.reduce((n, p) => n + p.qty, 0)} items in your cart
+              <Button asChild variant="link" size="sm">
+                <Link to="/">
+                  View cart <ArrowRight />
+                </Link>
+              </Button>
+            </p>
+          )}
+        </>
+      )}
+      {page === "my-orders" && (
+        <CustomerOrders
+          orders={orders}
+          loading={ordersLoading || authLoading}
+          error={ordersError}
+          filter={orderFilter}
+          setFilter={setOrderFilter}
+          signedIn={Boolean(user)}
+        />
+      )}
+      {page === "coupons" && (
+        <Empty icon={Ticket} title="No available coupons" />
+      )}
+      {page === "addresses" && <Addresses />}
+      {page === "account-settings" &&
+        (user ? (
+          <AccountSettings />
+        ) : (
+          <SignInRequired title="Sign in to manage your account" />
+        ))}
+    </main>
+  );
+}
+type OrderSummary = {
+  _id: string;
+  items: { name: string; quantity: number; price: number }[];
+  total: number;
+  status: "Processing" | "Shipped" | "Delivered" | "Cancelled";
+  createdAt: string;
+};
+
+function CustomerOrders({
+  orders,
+  loading,
+  error,
+  filter,
+  setFilter,
+  signedIn,
+}: {
+  orders: OrderSummary[];
+  loading: boolean;
+  error: string;
+  filter: string;
+  setFilter: (filter: string) => void;
+  signedIn: boolean;
+}) {
+  if (!signedIn && !loading)
+    return <SignInRequired title="Sign in to view your orders" />;
+  const filtered = orders.filter(
+    (order) => filter === "All" || order.status === filter,
+  );
+  return (
+    <section className="space-y-4">
+      <div className="flex flex-wrap gap-2 border-b pb-4">
+        {["All", "Processing", "Shipped", "Delivered", "Cancelled"].map(
+          (status) => (
+            <Button
+              key={status}
+              size="sm"
+              variant={filter === status ? "default" : "outline"}
+              onClick={() => setFilter(status)}
+              className="rounded-full"
+            >
+              {status}
+            </Button>
+          ),
+        )}
+      </div>
+      {error && (
+        <p
+          role="alert"
+          className="rounded-xl border border-destructive/20 bg-card p-3 text-sm text-destructive"
+        >
+          {error}
+        </p>
+      )}
+      {loading ? (
+        <p className="py-12 text-center text-sm text-muted-foreground">
+          Loading your orders…
+        </p>
+      ) : filtered.length ? (
+        <div className="space-y-3">
+          {filtered.map((order) => (
+            <article
+              key={order._id}
+              className="rounded-2xl bg-card p-5 shadow-soft"
+            >
+              <div className="flex flex-wrap items-start justify-between gap-3 border-b pb-3">
+                <div>
+                  <h2 className="font-semibold">
+                    Order #{order._id.slice(-8).toUpperCase()}
+                  </h2>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {new Date(order.createdAt).toLocaleDateString()}
+                  </p>
+                </div>
+                <span className="rounded-full bg-accent px-3 py-1 text-xs font-semibold text-primary">
+                  {order.status}
+                </span>
+              </div>
+              <div className="space-y-2 py-3">
+                {order.items.map((item, index) => (
+                  <div
+                    key={`${item.name}-${index}`}
+                    className="flex justify-between gap-3 text-sm"
+                  >
+                    <span>
+                      {item.name} × {item.quantity}
+                    </span>
+                    <span>{formatPrice(item.price * item.quantity)}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="flex justify-between border-t pt-3 text-sm font-bold">
+                <span>Total</span>
+                <span>{formatPrice(order.total)}</span>
+              </div>
+            </article>
+          ))}
+        </div>
+      ) : (
+        <Empty
+          icon={Package}
+          title={
+            filter === "All"
+              ? "No orders yet"
+              : `No ${filter.toLowerCase()} orders`
+          }
+        />
+      )}
+    </section>
+  );
+}
+
+function SignInRequired({ title }: { title: string }) {
+  return (
+    <div className="flex min-h-72 flex-col items-center justify-center gap-4 text-center">
+      <div className="grid h-16 w-16 place-items-center rounded-full bg-accent text-primary">
+        <Settings className="h-7 w-7" />
+      </div>
+      <h2 className="text-lg font-semibold">{title}</h2>
+      <div className="flex flex-wrap justify-center gap-2">
+        <Button asChild>
+          <Link to="/login">Sign in</Link>
+        </Button>
+        <Button asChild variant="outline">
+          <Link to="/register">Create account</Link>
+        </Button>
+      </div>
+    </div>
+  );
+}
+const blankAddress = {
+  id: "",
+  label: "Home",
+  name: "",
+  street: "",
+  city: "",
+  postcode: "",
+  country: "",
+};
+function Addresses() {
+  const { addresses, setAddresses } = useShop();
+  const [draft, setDraft] = useState<Address | null>(null);
+  function submit(e: FormEvent) {
+    e.preventDefault();
+    if (!draft) return;
+    const saved = { ...draft, id: draft.id || crypto.randomUUID() };
+    setAddresses((a) =>
+      a.some((x) => x.id === saved.id)
+        ? a.map((x) => (x.id === saved.id ? saved : x))
+        : [...a, saved],
+    );
+    setDraft(null);
+  }
+  return (
+    <section className="space-y-5">
+      <Button onClick={() => setDraft({ ...blankAddress })}>
+        <Plus />
+        Add address
+      </Button>
+      {draft && (
+        <form onSubmit={submit} className="max-w-2xl space-y-4 border-y py-5">
+          <div className="flex items-center justify-between">
+            <h2 className="font-bold">
+              {draft.id ? "Edit address" : "New address"}
+            </h2>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              aria-label="Cancel address"
+              onClick={() => setDraft(null)}
+            >
+              <X />
+            </Button>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            {(
+              [
+                "label",
+                "name",
+                "street",
+                "city",
+                "postcode",
+                "country",
+              ] as const
+            ).map((key) => (
+              <label
+                key={key}
+                className={`space-y-2 text-sm ${key === "street" ? "sm:col-span-2" : ""}`}
+              >
+                <span className="block capitalize">
+                  {key === "postcode"
+                    ? "Postal code"
+                    : key === "name"
+                      ? "Full name"
+                      : key === "street"
+                        ? "Street address"
+                        : key}
+                </span>
+                <Input
+                  required
+                  value={draft[key]}
+                  onChange={(e) =>
+                    setDraft({ ...draft, [key]: e.target.value })
+                  }
+                />
+              </label>
+            ))}
+          </div>
+          <Button type="submit">
+            <Check />
+            Save address
+          </Button>
+        </form>
+      )}
+      {addresses.length ? (
+        <div className="grid gap-4 lg:grid-cols-2">
+          {addresses.map((a) => (
+            <article key={a.id} className="rounded-2xl bg-card p-5 shadow-soft">
+              <div className="flex items-center justify-between">
+                <h2 className="flex items-center gap-2 font-bold">
+                  <MapPin className="h-4 w-4 text-primary" />
+                  {a.label}
+                </h2>
+                <div className="flex">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label={`Edit ${a.label} address`}
+                    onClick={() => setDraft(a)}
+                  >
+                    <Pencil />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label={`Delete ${a.label} address`}
+                    onClick={() =>
+                      setAddresses((list) => list.filter((x) => x.id !== a.id))
+                    }
+                  >
+                    <Trash2 />
+                  </Button>
+                </div>
+              </div>
+              <p className="mt-3 break-words text-sm">
+                {a.name}
+                <br />
+                {a.street}
+                <br />
+                {a.city}, {a.postcode}
+                <br />
+                {a.country}
+              </p>
+            </article>
+          ))}
+        </div>
+      ) : (
+        !draft && (
+          <Empty icon={MapPin} title="No saved addresses" action={false} />
+        )
+      )}
+    </section>
+  );
+}
+function AccountSettings() {
+  const { profile, setProfile } = useShop();
+  const [draft, setDraft] = useState(profile);
+  const [saved, setSaved] = useState(false);
+  return (
+    <form
+      className="max-w-2xl space-y-6"
+      onSubmit={(e) => {
+        e.preventDefault();
+        setProfile(draft);
+        setSaved(true);
+      }}
+    >
+      <div className="flex items-center gap-4 border-b py-5">
+        <div className="grid h-16 w-16 place-items-center rounded-full bg-accent text-lg font-bold text-primary">
+          {draft.name
+            .split(" ")
+            .map((n) => n[0])
+            .slice(0, 2)
+            .join("")}
+        </div>
+        <div>
+          <h2 className="font-semibold">Personal details</h2>
+          <p className="mt-1 text-sm text-muted-foreground">{profile.name}</p>
+        </div>
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2">
+        {(["name", "email", "phone"] as const).map((key) => (
+          <label
+            key={key}
+            className={`space-y-2 text-sm ${key === "name" ? "sm:col-span-2" : ""}`}
+          >
+            <span className="block">
+              {key === "name"
+                ? "Full name"
+                : key === "email"
+                  ? "Email address"
+                  : "Phone number"}
+            </span>
+            <Input
+              type={
+                key === "email" ? "email" : key === "phone" ? "tel" : "text"
+              }
+              required={key === "name"}
+              value={draft[key]}
+              onChange={(e) => {
+                setDraft({ ...draft, [key]: e.target.value });
+                setSaved(false);
+              }}
+            />
+          </label>
+        ))}
+      </div>
+      <div className="border-y py-5">
+        <h2 className="mb-4 font-semibold">Preferences</h2>
+        <label className="flex items-center gap-3 text-sm">
+          <input
+            type="checkbox"
+            checked={draft.offers}
+            onChange={(e) => {
+              setDraft({ ...draft, offers: e.target.checked });
+              setSaved(false);
+            }}
+            className="h-4 w-4 accent-primary"
+          />
+          Email offers and new arrivals
+        </label>
+      </div>
+      <div className="flex flex-wrap items-center gap-3">
+        <Button type="submit">
+          <Check />
+          Save changes
+        </Button>
+        {saved && (
+          <span role="status" className="text-sm text-success">
+            Changes saved
+          </span>
+        )}
+      </div>
+    </form>
+  );
+}
