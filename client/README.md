@@ -49,10 +49,10 @@ Customers can chat with store support at `/support` after registering or signing
 
 The storefront is a TanStack Start SSR app deployed to Vercel. The Express API and MongoDB-backed data run on Render; MongoDB itself must be hosted separately, for example on MongoDB Atlas.
 
-1. Create a Vercel project for this repository, set its **Root Directory** to `client`, and note the Vercel site origin. The build uses `vercel.json` and the Nitro Vercel preset configured in `vite.config.ts`. Set `VITE_API_URL` in Vercel’s project environment settings before deploying; the local `client/.env` is ignored by Git and is not deployed. Production builds fail if the Vercel variable is missing.
+1. Create a Vercel project for this repository and set its **Root Directory** to `client`. The build uses `vercel.json` and the Nitro Vercel preset configured in `vite.config.ts`. Production builds use the public Render API URL from `client/.env.production`; you can override it with `VITE_API_URL` in Vercel’s project environment settings. The local `client/.env` is ignored by Git and is not deployed.
 2. Create a MongoDB database and database user. Configure its network access to allow connections from Render.
 3. Create a Render Blueprint from this repository using `render.yaml`. Supply `MONGODB_URI`, `CLIENT_ORIGIN` (the exact Vercel site origin, without a trailing slash), `ADMIN_NAME`, `ADMIN_EMAIL`, and a strong `ADMIN_PASSWORD` of at least 12 characters when prompted. The blueprint generates `JWT_SECRET` and deploys the API with a persistent disk for uploaded product images.
 4. After the API is deployed, open its Render Shell and run `npm run seed` once to create the administrator and sample products. The admin email and password are the values configured in the Render environment.
-5. Set `VITE_API_URL` in Vercel to the deployed Render URL plus `/api` (for example, `https://novashop-api.onrender.com/api`), then deploy or redeploy the storefront. If the Vercel domain changes, update `CLIENT_ORIGIN` in Render to match it and redeploy the API.
+5. If your Render API URL differs from the default in `client/.env.production`, update that value or override `VITE_API_URL` in Vercel, then deploy or redeploy the storefront. If the Vercel domain changes, update `CLIENT_ORIGIN` in Render to match it and redeploy the API.
 
 The Render blueprint uses a paid Starter instance because Render persistent disks are not available on free instances. The disk keeps uploaded product images across deploys and restarts. The API health check is available at `/api/health`.
