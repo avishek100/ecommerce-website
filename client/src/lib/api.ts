@@ -3,8 +3,14 @@ import hero from "@/assets/hero.jpg";
 import sneaker from "@/assets/sneaker.jpg";
 import watch from "@/assets/watch.jpg";
 
+const configuredApiUrl = import.meta.env["VITE_API_URL"];
+
+if (import.meta.env.PROD && !configuredApiUrl) {
+  throw new Error("VITE_API_URL must be set for production builds.");
+}
+
 export const apiBaseUrl = (
-  import.meta.env["VITE_API_URL"] ?? "http://localhost:4000/api"
+  configuredApiUrl ?? "http://localhost:4000/api"
 ).replace(/\/$/, "");
 
 export class ApiError extends Error {
