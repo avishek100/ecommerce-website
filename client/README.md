@@ -45,14 +45,12 @@ The admin console has separate pages at `/admin/recent-orders`, `/admin/products
 
 Customers can chat with store support at `/support` after registering or signing in. Administrators receive messages and reply in real time from **Customer chat** at `/admin/chat`.
 
-## Deploy to Vercel and Render
+## Deploy frontend and API together on Render
 
-The storefront is a TanStack Start SSR app deployed to Vercel. The Express API and MongoDB-backed data run on Render; MongoDB itself must be hosted separately, for example on MongoDB Atlas.
+The Render Blueprint at the repository root builds both the TanStack Start storefront and Express API, then serves them on one public URL. The API is available under `/api`; uploaded product images are served under `/uploads/products`. MongoDB must be hosted separately, for example on MongoDB Atlas.
 
-1. Create a Vercel project for this repository and set its **Root Directory** to `client`. The build uses `vercel.json` and the Nitro Vercel preset configured in `vite.config.ts`. Production builds use the public Render API URL from `client/.env.production`; you can override it with `VITE_API_URL` in Vercel’s project environment settings. The local `client/.env` is ignored by Git and is not deployed.
-2. Create a MongoDB database and database user. Configure its network access to allow connections from Render.
-3. Create a Render Blueprint from this repository using `render.yaml`. Supply `MONGODB_URI`, `CLIENT_ORIGIN` (the exact Vercel site origin, without a trailing slash), `ADMIN_NAME`, `ADMIN_EMAIL`, and a strong `ADMIN_PASSWORD` of at least 12 characters when prompted. The blueprint generates `JWT_SECRET` and deploys the API with a persistent disk for uploaded product images.
-4. After the API is deployed, open its Render Shell and run `npm run seed` once to create the administrator and sample products. The admin email and password are the values configured in the Render environment.
-5. If your Render API URL differs from the default in `client/.env.production`, update that value or override `VITE_API_URL` in Vercel, then deploy or redeploy the storefront. If the Vercel domain changes, update `CLIENT_ORIGIN` in Render to match it and redeploy the API.
+1. Create a MongoDB database and database user. Configure network access to allow connections from Render.
+2. Create a Render Blueprint from this repository using `render.yaml`. Supply `MONGODB_URI`, `ADMIN_NAME`, `ADMIN_EMAIL`, and a strong `ADMIN_PASSWORD` of at least 12 characters when prompted. The blueprint generates `JWT_SECRET` and provisions a persistent disk for uploaded product images.
+3. After the service deploys, open its Render Shell and run `npm run seed --prefix server` once to create the administrator and sample products. The admin email and password are the values configured in the Render environment.
 
-The Render blueprint uses a paid Starter instance because Render persistent disks are not available on free instances. The disk keeps uploaded product images across deploys and restarts. The API health check is available at `/api/health`.
+The storefront calls `/api` on its own origin, so no separate frontend URL or CORS origin setting is needed. The Render Blueprint uses a paid Starter instance because persistent disks are not available on free instances. The disk keeps uploaded product images across deploys and restarts. The API health check is available at `/api/health`.

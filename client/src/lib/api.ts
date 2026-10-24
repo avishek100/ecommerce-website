@@ -66,6 +66,7 @@ const bundledImages: Record<string, string> = {
 
 export function productImage(source: string) {
   if (source.startsWith("/uploads/products/")) {
+    if (apiBaseUrl.startsWith("/")) return source;
     return new URL(source, apiBaseUrl).toString();
   }
   return bundledImages[source] ?? source;

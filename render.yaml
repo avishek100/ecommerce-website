@@ -1,12 +1,11 @@
 services:
   - type: web
-    name: novashop-api
+    name: novashop
     runtime: node
     plan: starter
     region: singapore
-    rootDir: server
-    buildCommand: npm ci
-    startCommand: npm start
+    buildCommand: npm ci --prefix client && npm ci --prefix server && npm --prefix client run build
+    startCommand: node server/src/deploy.js
     healthCheckPath: /api/health
     disk:
       name: novashop-uploads
@@ -15,12 +14,12 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
+      - key: NODE_VERSION
+        value: 22.16.0
       - key: MONGODB_URI
         sync: false
       - key: JWT_SECRET
         generateValue: true
-      - key: CLIENT_ORIGIN
-        sync: false
       - key: ADMIN_NAME
         sync: false
       - key: ADMIN_EMAIL
